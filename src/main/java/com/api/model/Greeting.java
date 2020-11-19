@@ -1,4 +1,4 @@
-package com.API.model;
+package com.api.model;
 
 public class Greeting {
 
