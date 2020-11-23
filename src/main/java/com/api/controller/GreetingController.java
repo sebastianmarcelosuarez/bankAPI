@@ -21,8 +21,11 @@ import com.google.firebase.database.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import com.google.common.util.concurrent.MoreExecutors.*;
 
 import com.api.service.FirebaseService;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 @RestController
 @RequestMapping("/mainapi")
@@ -79,7 +82,7 @@ public class GreetingController {
                         System.out.println("Operation failed with error: " + t);
                         isLoaded[0] = Boolean.TRUE;
                     }
-                });
+                }, directExecutor());
             }
             @Override
             public void onCancelled(DatabaseError databaseError) {
