@@ -18,6 +18,8 @@ import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
 import com.google.firebase.database.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -91,42 +93,29 @@ public class GreetingController {
             }
         });
 
-
         while ( (!isLoaded[0]) ) {
             System.out.println("Loading...");
        }
-
         return map;
     }
 
+    //TODO agregar nuevo usuario con Json, ver si usar post o put! uno crea, otro updatea.. El user puede incluir cars!
     @PostMapping("/addUser")
-    public ResponseEntity< Map<String,User>> addUser() {
-
-        User user = new User();
-        User user2 = new User();
-        Car car = new Car();
-        car.setId(UUID.randomUUID().toString());
-        car.setSits(1);
-        car.setWheels(4);
-        car.setTrademark("Ford");
-        car.setName("Fiesta");
-
-        user.setId(UUID.randomUUID().toString());
-        user.setName("John");
-        user.setLastName("Rambo");
-
-        user2.setId(UUID.randomUUID().toString());
-        user2.setName("Ruben");
-        user2.setLastName("Rada");
-        user2.setCars(List.of(car));
-
-        DatabaseReference ref = firebase.getReference("user");
-
+    public ResponseEntity< Map<String,User>> addUser(@RequestBody String payload) {
+        GsonBuilder builder = new GsonBuilder();
         Map<String,User> userMap = new HashMap<String,User>();
-        userMap.put(user.getId(),user);
-        userMap.put(user2.getId(),user2);
+        Gson gson = builder.create();
 
-        ref.setValueAsync(userMap);
+        User user = gson.fromJson(payload, User.class);
+
+        DatabaseReference ref = firebase.getReference("users");
+
+        user.setId(ref.push().getKey());
+        userMap.put(user.getId(),user);
+
+
+
+        ref.child(user.getId()).setValueAsync(user);
 
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{name}")
@@ -136,7 +125,8 @@ public class GreetingController {
         return ResponseEntity.created(uri).body(userMap);
     }
 
-    @PostMapping("/postgreeting")
+    // update user
+    @PutMapping("/postgreeting")
     public Greeting postgreeting(@RequestParam(value = "name", defaultValue = "World") String name) {
         return new Greeting(counter.incrementAndGet(), String.format(template, name));
     }
