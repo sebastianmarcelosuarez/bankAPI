@@ -1,0 +1,11 @@
+to run it:
+1) mvn clean install ( to build war)
+2)cp /home/peplo/Projects/API/target/API-0.0.1-SNAPSHOT.war /home/peplo/Downloads/apache-tomcat-9.0.39/webapps/api.war ( to copy the war to tomcat folder.
+Look for a way to do this automatically)
+3) start tomcat server
+   cd /home/peplo/Downloads/apache-tomcat-9.0.39/bin
+   sh catalina.sh run
+
+   Enjoy!
+
+
