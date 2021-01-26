@@ -9,3 +9,9 @@ Look for a way to do this automatically)
    Enjoy!
 
 
+TODO:
+1) Implementar JWT
+2) crear un nuevo master, y cambiar firebase por H2.
+3) Revisar los 4 html get, put post patch
+4) Junit de APIS
+5) Subir a Heroku y grabar en Postman los 4 accesos de HTML mas swagger r
