@@ -1,6 +1,6 @@
 package com.api.repository;
 
-import com.api.entity.User;
+import com.api.security.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

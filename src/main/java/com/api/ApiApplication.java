@@ -1,6 +1,6 @@
 package com.api;
 
-import com.api.entity.User;
+import com.api.security.entity.User;
 import com.api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;

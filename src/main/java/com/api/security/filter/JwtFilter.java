@@ -1,7 +1,7 @@
-package com.api.filter;
+package com.api.security.filter;
 
-import com.api.service.CustomUserDetailsService;
-import com.api.util.JwtUtil;
+import com.api.security.service.CustomUserDetailsService;
+import com.api.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,7 +34,7 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
-            if (jwtUtil.validateToken(token, userDetails)) {
+            if (jwtUtil.validateToken(token, userDetails) == true) {
                 UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails((request)));

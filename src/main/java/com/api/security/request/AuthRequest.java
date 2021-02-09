@@ -1,4 +1,4 @@
-package com.api.entity;
+package com.api.security.request;
 
 public class AuthRequest {
 

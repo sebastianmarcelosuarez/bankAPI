@@ -1,7 +1,7 @@
-package com.api.config;
+package com.api.security.config;
 
-import com.api.filter.JwtFilter;
-import com.api.service.CustomUserDetailsService;
+import com.api.security.filter.JwtFilter;
+import com.api.security.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

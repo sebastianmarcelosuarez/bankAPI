@@ -6,14 +6,13 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import com.api.entity.AuthRequest;
+import com.api.model.Owner;
+import com.api.security.request.AuthRequest;
 import com.api.model.Greeting;
-import com.api.model.User;
 ;
 import com.api.repository.UserRepository;
-import com.api.util.JwtUtil;
+import com.api.security.util.JwtUtil;
 import com.google.api.core.SettableApiFuture;
 import com.google.firebase.database.*;
 import com.google.gson.Gson;
@@ -33,8 +32,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.api.service.FirebaseService;
 
 @RestController
-@RequestMapping("/mainapi")
-public class GreetingController {
+@RequestMapping("/api_v1")
+public class OwnerController {
 
     private static final String template = "Hello, %s!";
     private final AtomicLong counter = new AtomicLong();
@@ -46,11 +45,6 @@ public class GreetingController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-
-    @GetMapping("/welcome")
-    public String welcome() {
-        return "welcome to this api!";
-    }
 
     @PostMapping("/authenticate")
     public String generateToken(@RequestBody AuthRequest authRequest) throws Exception {
@@ -85,12 +79,12 @@ public class GreetingController {
 
 
     @GetMapping("/users")
-    public ResponseEntity<Map<String, User>> getUsers() {
+    public ResponseEntity<Map<String, Owner>> getUsers() {
         return ResponseEntity.accepted().body(getDBUsers());
     }
 
-    private Map<String, User> getDBUsers() {
-        Map<String, User> map = new HashMap<>();
+    private Map<String, Owner> getDBUsers() {
+        Map<String, Owner> map = new HashMap<>();
         DatabaseReference ref = firebase.getReference("users");
 
         final SettableApiFuture<DataSnapshot> future = SettableApiFuture.create();
@@ -106,13 +100,13 @@ public class GreetingController {
             }
         });
 
-        Map<String, User> result;
+        Map<String, Owner> result;
         try {
             while (!future.isDone() && !future.isCancelled()) {
                 System.out.println("waiting db result");
             }
             DataSnapshot dataSnapshot = future.get();
-            result = (Map<String, User>) dataSnapshot.getValue();
+            result = (Map<String, Owner>) dataSnapshot.getValue();
         } catch (InterruptedException e) {
             e.printStackTrace();
             result = new HashMap<>();
@@ -125,20 +119,20 @@ public class GreetingController {
     }
 
     @PostMapping("/addUser")
-    public ResponseEntity<Map<String, User>> addUser(@RequestBody String payload) {
+    public ResponseEntity<Map<String, Owner>> addUser(@RequestBody String payload) {
         GsonBuilder builder = new GsonBuilder();
-        Map<String, User> userMap = new HashMap<String, User>();
+        Map<String, Owner> userMap = new HashMap<String, Owner>();
         Gson gson = builder.create();
-        User user = gson.fromJson(payload, User.class);
+        Owner owner = gson.fromJson(payload, Owner.class);
 
         DatabaseReference ref = firebase.getReference("users");
-        user.setId(ref.push().getKey());
-        userMap.put(user.getId(), user);
-        ref.child(user.getId()).setValueAsync(user);
+        owner.setId(ref.push().getKey());
+        userMap.put(owner.getId(), owner);
+        ref.child(owner.getId()).setValueAsync(owner);
 
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{name}")
-                .buildAndExpand(user.getId())
+                .buildAndExpand(owner.getId())
                 .toUri();
 
         return ResponseEntity.created(uri).body(userMap);
