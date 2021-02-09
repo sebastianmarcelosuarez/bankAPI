@@ -2,7 +2,6 @@ package com.api.model;
 
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.PositiveOrZero;
-import java.util.UUID;
 
 public class Car {
 

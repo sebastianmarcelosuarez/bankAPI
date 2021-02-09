@@ -5,10 +5,14 @@ import java.util.*;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
+import com.api.model.Owner;
+import com.api.security.request.AuthRequest;
 import com.api.model.Greeting;
-import com.api.model.User;
 ;
+import com.api.repository.UserRepository;
+import com.api.security.util.JwtUtil;
 import com.google.api.core.SettableApiFuture;
 import com.google.firebase.database.*;
 import com.google.gson.Gson;
@@ -17,20 +21,51 @@ import com.google.gson.GsonBuilder;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.api.service.FirebaseService;
 
 @RestController
-@RequestMapping("/mainapi")
-public class GreetingController {
+@RequestMapping("/api_v1")
+public class OwnerController {
 
     private static final String template = "Hello, %s!";
     private final AtomicLong counter = new AtomicLong();
     private FirebaseDatabase firebase = new FirebaseService().getDb();
+    private JwtUtil jwtUtil = new JwtUtil();
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+
+    @PostMapping("/authenticate")
+    public String generateToken(@RequestBody AuthRequest authRequest) throws Exception {
+        try {
+            System.out.println("printing H2 users");
+            List<String> users =  userRepository.findAll().stream().map(user -> user.toString()).collect(Collectors.toList());
+            System.out.println(users);
+            System.out.println("printing authRequest");
+            System.out.println("username: " + authRequest.getUserName());
+            System.out.println("password: " + authRequest.getPassword());
+
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authRequest.getUserName(), authRequest.getPassword())
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("invalid username or password");
+        }
+
+        return jwtUtil.generateToken(authRequest.getUserName());
+    }
 
     @GetMapping("/getgreeting")
     public ResponseEntity<Greeting> getgreeting(@RequestBody String name) {
@@ -39,38 +74,39 @@ public class GreetingController {
                 .buildAndExpand(name)
                 .toUri();
 
-        return   ResponseEntity.created(uri).body(new Greeting(counter.incrementAndGet(), String.format(template, name)));
+        return ResponseEntity.created(uri).body(new Greeting(counter.incrementAndGet(), String.format(template, name)));
     }
 
 
     @GetMapping("/users")
-    public ResponseEntity<Map<String, User>> getUsers() {
-        return   ResponseEntity.accepted().body(getDBUsers());
+    public ResponseEntity<Map<String, Owner>> getUsers() {
+        return ResponseEntity.accepted().body(getDBUsers());
     }
 
-    private  Map<String, User> getDBUsers() {
-        Map<String, User> map = new HashMap<>();
+    private Map<String, Owner> getDBUsers() {
+        Map<String, Owner> map = new HashMap<>();
         DatabaseReference ref = firebase.getReference("users");
 
         final SettableApiFuture<DataSnapshot> future = SettableApiFuture.create();
         ref.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-              future.set(dataSnapshot);
+                future.set(dataSnapshot);
             }
+
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 System.out.println(databaseError.getMessage());
             }
         });
 
-        Map<String, User> result;
+        Map<String, Owner> result;
         try {
-            while (!future.isDone() && !future.isCancelled()){
+            while (!future.isDone() && !future.isCancelled()) {
                 System.out.println("waiting db result");
             }
-            DataSnapshot dataSnapshot =  future.get();
-            result = (Map<String, User>) dataSnapshot.getValue();
+            DataSnapshot dataSnapshot = future.get();
+            result = (Map<String, Owner>) dataSnapshot.getValue();
         } catch (InterruptedException e) {
             e.printStackTrace();
             result = new HashMap<>();
@@ -83,20 +119,20 @@ public class GreetingController {
     }
 
     @PostMapping("/addUser")
-    public ResponseEntity< Map<String,User>> addUser(@RequestBody String payload) {
+    public ResponseEntity<Map<String, Owner>> addUser(@RequestBody String payload) {
         GsonBuilder builder = new GsonBuilder();
-        Map<String,User> userMap = new HashMap<String,User>();
+        Map<String, Owner> userMap = new HashMap<String, Owner>();
         Gson gson = builder.create();
-        User user = gson.fromJson(payload, User.class);
+        Owner owner = gson.fromJson(payload, Owner.class);
 
         DatabaseReference ref = firebase.getReference("users");
-        user.setId(ref.push().getKey());
-        userMap.put(user.getId(),user);
-        ref.child(user.getId()).setValueAsync(user);
+        owner.setId(ref.push().getKey());
+        userMap.put(owner.getId(), owner);
+        ref.child(owner.getId()).setValueAsync(owner);
 
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{name}")
-                .buildAndExpand(user.getId())
+                .buildAndExpand(owner.getId())
                 .toUri();
 
         return ResponseEntity.created(uri).body(userMap);
@@ -126,13 +162,12 @@ public class GreetingController {
         });
         Map<String, Object> result;
         try {
-            while (!future.isDone() && !future.isCancelled()){
+            while (!future.isDone() && !future.isCancelled()) {
                 System.out.println("waiting db result");
             }
-            DataSnapshot dataSnapshot =  future.get();
+            DataSnapshot dataSnapshot = future.get();
             result = (Map<String, Object>) dataSnapshot.getValue();
-            if (result == null || result.size() == 0)
-            {
+            if (result == null || result.size() == 0) {
                 System.out.println("user not found");
                 return null;
             }
@@ -155,41 +190,42 @@ public class GreetingController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString());
         }
 
-        return  ResponseEntity.ok().body(userUpdatedMap);
+        return ResponseEntity.ok().body(userUpdatedMap);
     }
 
     /**
      * Updates user on firebase
-     * @param dbUser the user found on DB
+     *
+     * @param dbUser  the user found on DB
      * @param payload new info for update the user on json format
      * @return
      */
-    private Map<String, Object> updateUserOnFirebase(Map<String,Object> dbUser, JSONObject payload) {
-        dbUser.forEach( (k,v) -> {
-           System.out.println("for each");
-           if (payload.containsKey("newName")) ((Map)v).put("name", payload.get("newName"));
-           if (payload.containsKey("newLastName")) ((Map)v).put("lastName",  payload.get("newLastName"));
+    private Map<String, Object> updateUserOnFirebase(Map<String, Object> dbUser, JSONObject payload) {
+        dbUser.forEach((k, v) -> {
+            System.out.println("for each");
+            if (payload.containsKey("newName")) ((Map) v).put("name", payload.get("newName"));
+            if (payload.containsKey("newLastName")) ((Map) v).put("lastName", payload.get("newLastName"));
 
-           DatabaseReference ref = firebase.getReference("users");
-           Map<String, Object> mapToDB = new HashMap<>();
-           mapToDB.put(k,v);
-           ref.updateChildrenAsync(mapToDB);
-       });
-       return dbUser;
+            DatabaseReference ref = firebase.getReference("users");
+            Map<String, Object> mapToDB = new HashMap<>();
+            mapToDB.put(k, v);
+            ref.updateChildrenAsync(mapToDB);
+        });
+        return dbUser;
     }
-
 
 
     /**
      * deletes user on firebase
+     *
      * @param dbUser the user found on DB
      * @return
      */
-    private void deleteUserOnFirebase(Map<String,Object> dbUser) {
-        dbUser.forEach( (k,v) -> {
+    private void deleteUserOnFirebase(Map<String, Object> dbUser) {
+        dbUser.forEach((k, v) -> {
             DatabaseReference ref = firebase.getReference("users");
             Map<String, Object> mapToDB = new HashMap<>();
-            mapToDB.put(k,null);
+            mapToDB.put(k, null);
             ref.updateChildrenAsync(mapToDB);
         });
 
@@ -197,6 +233,7 @@ public class GreetingController {
 
     /**
      * Deletes user handler
+     *
      * @param userId: Id of user to delete
      * @return
      */
@@ -222,15 +259,14 @@ public class GreetingController {
         });
         Map<String, Object> result;
         try {
-            while (!future.isDone() && !future.isCancelled()){
+            while (!future.isDone() && !future.isCancelled()) {
                 System.out.println("waiting db result");
             }
-            DataSnapshot dataSnapshot =  future.get();
+            DataSnapshot dataSnapshot = future.get();
             result = (Map<String, Object>) dataSnapshot.getValue();
-            if (result == null || result.size() == 0)
-            {
+            if (result == null || result.size() == 0) {
                 System.out.println("user not found");
-                return  ResponseEntity.notFound().build();
+                return ResponseEntity.notFound().build();
             }
             System.out.println("USER FOUND!!");
             System.out.println(result.toString());
@@ -244,6 +280,6 @@ public class GreetingController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString());
         }
 
-        return  ResponseEntity.ok().body("User Deleted");
+        return ResponseEntity.ok().body("User Deleted");
     }
 }

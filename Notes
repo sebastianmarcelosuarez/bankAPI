@@ -7,11 +7,13 @@ Look for a way to do this automatically)
    sh catalina.sh run
 
    Enjoy!
-
+4) to access swagger, was it / ?
 
 TODO:
-1) Implementar JWT
-2) crear un nuevo master, y cambiar firebase por H2.
+1) Implementar JWT --DONE
+2) crear un nuevo master, y cambiar firebase por H2. --DONE
 3) Revisar los 4 html get, put post patch
+6) revisar y renombrar clases (user esta duplicada) --DONE
 4) Junit de APIS
-5) Subir a Heroku y grabar en Postman los 4 accesos de HTML mas swagger r
+5) Subir a Heroku y grabar en Postman los 4 accesos de HTML mas swagger
+7) hacer front en React!

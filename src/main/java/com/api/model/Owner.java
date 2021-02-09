@@ -2,9 +2,8 @@ package com.api.model;
 
 import javax.validation.constraints.NotNull;
 import java.util.List;
-import java.util.UUID;
 
-public class User {
+public class Owner {
 
     @NotNull
     String id;
