@@ -19,7 +19,7 @@ public class SwaggerConfig {
                 .apis(
                         RequestHandlerSelectors
                         .basePackage("com.api.controller"))
-                .paths(PathSelectors.ant("/mainapi/*"))
+                .paths(PathSelectors.ant("/api_v1/*"))
                 .build();
     }
 }
