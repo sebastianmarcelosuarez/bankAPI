@@ -2,6 +2,8 @@ package com.api;
 
 import com.api.security.entity.User;
 import com.api.repository.UserRepository;
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.info.Info;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @SpringBootApplication
+@OpenAPIDefinition(info = @Info(title = "Owner API awesome", version = "97.5", description = "API with OpenApi3"))
 public class ApiApplication {
 	@Autowired
 	private UserRepository userRepository;

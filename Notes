@@ -1,7 +1,7 @@
 to run it:
 1) mvn clean install ( to build war)
-2)cp /home/peplo/Projects/API/target/API-0.0.1-SNAPSHOT.war /home/peplo/Downloads/apache-tomcat-9.0.39/webapps/api.war ( to copy the war to tomcat folder.
-Look for a way to do this automatically)
+2)cp /home/peplo/Projects/API/target/API-0.0.1-SNAPSHOT.war /home/peplo/Downloads/apache-tomcat-9.0.39/webapps/api_v1.war ( to copy the war to tomcat folder.
+Look for a way to do this automatically. If i want to change the name its better to change context path on tomcat https://stackoverflow.com/questions/7276989/how-to-set-the-context-path-of-a-web-application-in-tomcat-7-0 )
 3) start tomcat server
    cd /home/peplo/Downloads/apache-tomcat-9.0.39/bin
    sh catalina.sh run
