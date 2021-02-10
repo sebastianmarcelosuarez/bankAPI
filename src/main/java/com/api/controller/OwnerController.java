@@ -32,7 +32,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.api.service.FirebaseService;
 
 @RestController
-@RequestMapping("/api_v1")
 public class OwnerController {
 
     private static final String template = "Hello, %s!";

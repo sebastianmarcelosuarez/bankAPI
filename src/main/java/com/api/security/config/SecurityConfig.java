@@ -52,9 +52,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/webjars/**",
             // -- Swagger UI v3 (OpenAPI)
             "/v3/api-docs/**",
+            "/v3/api-docs.yaml",
             "/swagger-ui/**",
-            "/api_v1/authenticate",
-            "/api_v1/getgreeting"
+            "/authenticate",
+            "/getgreeting"
     };
 
 
