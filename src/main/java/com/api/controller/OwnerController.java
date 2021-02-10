@@ -8,9 +8,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import com.api.model.Owner;
+import com.api.security.entity.User;
 import com.api.security.request.AuthRequest;
 import com.api.model.Greeting;
-;
+
 import com.api.repository.UserRepository;
 import com.api.security.util.JwtUtil;
 import com.google.api.core.SettableApiFuture;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -34,10 +36,13 @@ import com.api.service.FirebaseService;
 @RestController
 public class OwnerController {
 
-    private static final String template = "Hello, %s!";
+    private static final String TEMPLATE = "Hello, %s!";
     private final AtomicLong counter = new AtomicLong();
-    private FirebaseDatabase firebase = new FirebaseService().getDb();
-    private JwtUtil jwtUtil = new JwtUtil();
+    private final FirebaseDatabase firebase = new FirebaseService().getDb();
+    private final JwtUtil jwtUtil = new JwtUtil();
+    private static final String FIREBASEUSERSPATH = "users";
+    private DatabaseReference databaseReferenceUser = firebase.getReference(FIREBASEUSERSPATH);
+
     @Autowired
     private UserRepository userRepository;
 
@@ -46,10 +51,10 @@ public class OwnerController {
 
 
     @PostMapping("/authenticate")
-    public String generateToken(@RequestBody AuthRequest authRequest) throws Exception {
+    public String generateToken(@RequestBody AuthRequest authRequest) throws BadCredentialsException {
         try {
             System.out.println("printing H2 users");
-            List<String> users =  userRepository.findAll().stream().map(user -> user.toString()).collect(Collectors.toList());
+            List<String> users =  userRepository.findAll().stream().map(User::toString).collect(Collectors.toList());
             System.out.println(users);
             System.out.println("printing authRequest");
             System.out.println("username: " + authRequest.getUserName());
@@ -60,7 +65,7 @@ public class OwnerController {
             );
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception("invalid username or password");
+            throw new BadCredentialsException("invalid username or password");
         }
 
         return jwtUtil.generateToken(authRequest.getUserName());
@@ -73,7 +78,7 @@ public class OwnerController {
                 .buildAndExpand(name)
                 .toUri();
 
-        return ResponseEntity.created(uri).body(new Greeting(counter.incrementAndGet(), String.format(template, name)));
+        return ResponseEntity.created(uri).body(new Greeting(counter.incrementAndGet(), String.format(TEMPLATE, name)));
     }
 
 
@@ -83,11 +88,8 @@ public class OwnerController {
     }
 
     private Map<String, Owner> getDBUsers() {
-        Map<String, Owner> map = new HashMap<>();
-        DatabaseReference ref = firebase.getReference("users");
-
         final SettableApiFuture<DataSnapshot> future = SettableApiFuture.create();
-        ref.addValueEventListener(new ValueEventListener() {
+        databaseReferenceUser.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 future.set(dataSnapshot);
@@ -106,10 +108,7 @@ public class OwnerController {
             }
             DataSnapshot dataSnapshot = future.get();
             result = (Map<String, Owner>) dataSnapshot.getValue();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            result = new HashMap<>();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
             result = new HashMap<>();
         }
@@ -120,14 +119,13 @@ public class OwnerController {
     @PostMapping("/addUser")
     public ResponseEntity<Map<String, Owner>> addUser(@RequestBody String payload) {
         GsonBuilder builder = new GsonBuilder();
-        Map<String, Owner> userMap = new HashMap<String, Owner>();
+        Map<String, Owner> userMap = new HashMap<>();
         Gson gson = builder.create();
         Owner owner = gson.fromJson(payload, Owner.class);
 
-        DatabaseReference ref = firebase.getReference("users");
-        owner.setId(ref.push().getKey());
+        owner.setId(databaseReferenceUser.push().getKey());
         userMap.put(owner.getId(), owner);
-        ref.child(owner.getId()).setValueAsync(owner);
+        databaseReferenceUser.child(owner.getId()).setValueAsync(owner);
 
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{name}")
@@ -137,16 +135,13 @@ public class OwnerController {
         return ResponseEntity.created(uri).body(userMap);
     }
 
-    // update user
     @PutMapping("/updateUser")
     public ResponseEntity updateUser(@RequestParam(value = "userId", defaultValue = "") String userId, @RequestBody String payload) {
-        Map<String, Object> userUpdatedMap = new HashMap<>();
+        Map<String, Object> userUpdatedMap;
         System.out.println("user id: " + userId);
-        //1 buscar si existe el usuario en la db
-        DatabaseReference ref = firebase.getReference("users");
 
         final SettableApiFuture<DataSnapshot> future = SettableApiFuture.create();
-        Query query = ref.orderByChild("id").equalTo(userId);
+        Query query = databaseReferenceUser.orderByChild("id").equalTo(userId);
         query.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -156,7 +151,7 @@ public class OwnerController {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                System.out.println("update User cancelled");
             }
         });
         Map<String, Object> result;
@@ -178,17 +173,10 @@ public class OwnerController {
 
             userUpdatedMap = updateUserOnFirebase(result, json);
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString());
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString());
-        } catch (ParseException e) {
+        } catch (InterruptedException | ExecutionException | ParseException e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString());
         }
-
         return ResponseEntity.ok().body(userUpdatedMap);
     }
 
@@ -205,10 +193,9 @@ public class OwnerController {
             if (payload.containsKey("newName")) ((Map) v).put("name", payload.get("newName"));
             if (payload.containsKey("newLastName")) ((Map) v).put("lastName", payload.get("newLastName"));
 
-            DatabaseReference ref = firebase.getReference("users");
             Map<String, Object> mapToDB = new HashMap<>();
             mapToDB.put(k, v);
-            ref.updateChildrenAsync(mapToDB);
+            databaseReferenceUser.updateChildrenAsync(mapToDB);
         });
         return dbUser;
     }
@@ -222,10 +209,9 @@ public class OwnerController {
      */
     private void deleteUserOnFirebase(Map<String, Object> dbUser) {
         dbUser.forEach((k, v) -> {
-            DatabaseReference ref = firebase.getReference("users");
             Map<String, Object> mapToDB = new HashMap<>();
             mapToDB.put(k, null);
-            ref.updateChildrenAsync(mapToDB);
+            databaseReferenceUser.updateChildrenAsync(mapToDB);
         });
 
     }
@@ -239,11 +225,9 @@ public class OwnerController {
     @DeleteMapping("/deleteUser")
     public ResponseEntity deleteUser(@RequestParam(value = "userId", defaultValue = "") String userId) {
         System.out.println("user id: " + userId);
-        //1 buscar si existe el usuario en la db
-        DatabaseReference ref = firebase.getReference("users");
 
         final SettableApiFuture<DataSnapshot> future = SettableApiFuture.create();
-        Query query = ref.orderByChild("id").equalTo(userId);
+        Query query = databaseReferenceUser.orderByChild("id").equalTo(userId);
         query.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -253,7 +237,7 @@ public class OwnerController {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                System.out.println("delete cancelled");
             }
         });
         Map<String, Object> result;
@@ -271,10 +255,7 @@ public class OwnerController {
             System.out.println(result.toString());
             deleteUserOnFirebase(result);
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString());
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString());
         }
