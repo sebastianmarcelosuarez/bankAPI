@@ -1,31 +1,31 @@
 package com.api;
 
-import com.api.security.entity.User;
-import com.api.repository.UserRepository;
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
-import io.swagger.v3.oas.annotations.info.Info;
+import com.api.model.Account;
+import com.api.model.Transaction;
+import com.api.repository.AccountRepository;
+import com.api.repository.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import javax.annotation.PostConstruct;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.time.Instant;
+import java.util.Date;
 
 @SpringBootApplication
-@OpenAPIDefinition(info = @Info(title = "Owner API awesome", version = "97.5", description = "API with OpenApi3"))
 public class ApiApplication {
 	@Autowired
-	private UserRepository userRepository;
+	private AccountRepository accountRepository;
+
+	@Autowired
+	private TransactionRepository transactionRepository;
 
 	@PostConstruct
 	public void initUsers () {
-		List<User> users = Stream.of(
-				new User(101, "peplo", "password", "email@email1"),
-				new User(102, "baco", "passwordbaco", "email@email22")
-		).collect(Collectors.toList());
-		userRepository.saveAll(users);
+		Account account = new Account(1100,"myUser",1000);
+		accountRepository.save(account);
+		Transaction transaction = new Transaction(1,"myUser",1000, Date.from(Instant.now()));
+		transactionRepository.save(transaction);
 	}
 	public static void main(String[] args) {
 		SpringApplication.run(ApiApplication.class, args);
